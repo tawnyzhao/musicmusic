@@ -2,35 +2,12 @@ from scipy.io.wavfile import read
 import RPi.GPIO as GPIO
 import random, os, fnmatch, pygame, sys, time
 
+# Clears console
 def clear():
     os.system('clear')
-    
-def main():
 	
-    #colours for terminal text
-    COLOUR = '\033[0;{}m'.format(random.randint(31,37))
-    CLEAR = '\033[0m'
-    playing = False
-    #printing playable songs inside the folder
-    filelist = os.listdir(".")
-    pattern = "*.wav"
-    print("\033[0;35m" + "Songs currently in folder:" + CLEAR)
-    for item in filelist:
-        if fnmatch.fnmatch(item, pattern):
-            print(item)
-    #read amplitude and frequency of music file with defined frame skips
-    file_name = raw_input("Enter song name: ")
-    frame_rate, amplitude = read(file_name)
-    frame_skip = frame_rate/1000.0
-    try: 
-        amplitude = amplitude[:,0] + amplitude[:,1]
-    except:
-        pass
-    song_total = float(len(amplitude)/frame_rate) # song time in seconds
-    clear()
-    amplitude = amplitude[::int(frame_skip)]
-    print("loading song...")
-    GPIO.setmode(GPIO.BCM)
+def reset_lights():
+	GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     GPIO.setup(18, GPIO.OUT)
     GPIO.setup(15, GPIO.OUT)
@@ -40,27 +17,9 @@ def main():
     GPIO.setup(25, GPIO.OUT)
     GPIO.setup(8, GPIO.OUT)
     GPIO.setup(7, GPIO.OUT)
-    
-    
 
-    max_amplitude = max(amplitude)
-    for i in range(len(amplitude)- 2):
-            amplitude[i] = float(abs(amplitude[i]))/max_amplitude*50
-            
-    pygame.mixer.init(frame_rate)
-    pygame.mixer.music.load(file_name)
-    pygame.mixer.music.play()
-    clear()
-    print(COLOUR + "playing " + file_name + CLEAR)
-    print("song length: " + str(int(song_total)) + " seconds")
-    time.sleep(0.275)
-    now = time.time()
-
-    for i in range(len(amplitude)):
-        #*(0.1125/10) for 22k sample
-        #0.1125 for 48k sample
-            #enabling LEDs depending on the amplitude
-        if amplitude[i] > 3:
+def display_amplitude(amplitude):
+if amplitude[i] > 3:
             GPIO.output(14,GPIO.HIGH)
         else:
             GPIO.output(14,GPIO.LOW)
@@ -92,13 +51,60 @@ def main():
             GPIO.output(7,GPIO.HIGH)
         else:
             GPIO.output(7,GPIO.LOW)
+def main():
+    # Colours for terminal text
+    COLOUR = '\033[0;{}m'.format(random.randint(31,37))
+    CLEAR = '\033[0m'
+
+    playing = False
+    # Prints wav files inside the folder
+    filelist = os.listdir(".")
+    PATTERN = "*.wav"
+    print("\033[0;35m" + "Songs currently in folder:" + CLEAR)
+    for file in filelist:
+        if fnmatch.fnmatch(file, PATTERN):
+            print(file)
+			
+    #read amplitude and frequency of music file with defined frame skips
+    file_name = raw_input("Enter song name: ")
+    frame_rate, amplitude = read(file_name)
+    frame_skip = frame_rate/1000.0
+    
+    # Converts stereo amplitude information to mono 
+    try: 
+        amplitude = amplitude[:,0] + amplitude[:,1]
+    except:
+        pass
+	
+    song_total = float(len(amplitude)/frame_rate) # song time in seconds
+    clear()
+	
+	
+    amplitude = amplitude[::int(frame_skip)]
+	
+    print("loading song...")
+   
+    
+
+    max_amplitude = max(amplitude)
+    for i in range(len(amplitude)- 2):
+            amplitude[i] = float(abs(amplitude[i]))/max_amplitude*50
             
+    pygame.mixer.init(frame_rate)
+    pygame.mixer.music.load(file_name)
+    pygame.mixer.music.play()
+    clear()
+    print(COLOUR + "playing " + file_name + CLEAR)
+    print("song length: " + str(int(song_total)) + " seconds")
+    time.sleep(0.275)
+    now = time.time()
+
+    for i in range(len(amplitude)):
+		display_amplitude(amplitude)        
+		
         while time.time()< now + (1.0000000000/frame_rate*frame_skip*0.99):
 	    time.sleep(.00000000001)
 	now = time.time()
 	
-            
-
-
 if __name__== '__main__':
     main()
